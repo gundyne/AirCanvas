@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-import keyboard
 import math
 from collections import deque
 from abc import ABC, abstractmethod
@@ -238,7 +237,9 @@ while True:
             paintIndex += 1
     
     #Key presses for clearing canvas and switching tools
-    if keyboard.is_pressed("c"):
+    keypress = cv2.waitKey(1)
+    
+    if keypress & 0xFF == ord('c'):
         if currentTool == 0:
             paints = [DrawBrush(customColor,paintSize)]
         elif currentTool == 1:
@@ -249,7 +250,7 @@ while True:
             paints = [DrawCircle(customColor,paintSize)]
         paintIndex = 0
     #Undo
-    elif keyboard.is_pressed("z"):
+    elif keypress & 0xFF == ord('z'):
         if not undoDebounce:
             undoDebounce = True
             latestIndex = len(paints)-1
@@ -277,7 +278,7 @@ while True:
                         paints = [DrawCircle(customColor,paintSize)]
                     paintIndex = 0
     
-    if not keyboard.is_pressed("z"):
+    if keypress == -1:
         undoDebounce = False
         
     
@@ -353,7 +354,7 @@ while True:
     cv2.imshow("Paint", paint)
     
     # Open the OpenCV window until 'q' is pressed
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    if keypress & 0xFF == ord('q'):
         break
         
 cap.release()
