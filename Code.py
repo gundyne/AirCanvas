@@ -134,9 +134,11 @@ currentTool = 0
 customColor = (0,0,0)
 paints = [DrawBrush((0,0,0),2)]
 paintIndex = 0
-                        
+undoDebounce = False            
+            
 kernel = np.ones((5, 5), np.uint8)
 
+    
 
 cv2.namedWindow("Color Detection")
 cv2.createTrackbar("UpperHue", "Color Detection",
@@ -165,11 +167,14 @@ cv2.createTrackbar("UpperRad", "Color Detection",
 cv2.createTrackbar("LowerRad", "Color Detection",
                    25, min([size[0],size[1]]), setValues)
 
+toolList = "Tools: 0(Brush), 1(Line), 2(Rectangle), 3(Circle)\n"
+
 cv2.namedWindow("Toolbox")
 cv2.createTrackbar("Red", "Toolbox", 0, 255, setValues)
 cv2.createTrackbar("Green", "Toolbox", 0, 255, setValues)
 cv2.createTrackbar("Blue", "Toolbox", 0, 255, setValues)
 cv2.createTrackbar("Size", "Toolbox", 1, 19, setValues)
+cv2.createTrackbar(toolList, "Toolbox", 0, 3, setValues)
 
 #cv2.resizeWindow("Color Detection",200,200)
 #cv2.resizeWindow("Toolbox",200,200)
@@ -180,6 +185,7 @@ while True:
                    cv2.getTrackbarPos("Red","Toolbox"))
     
     paintSize = cv2.getTrackbarPos("Size","Toolbox")+1
+    currentTool = cv2.getTrackbarPos(toolList, "Toolbox")
     
     #Create new group if brush settings are different
     if(paints[paintIndex].getColor() != customColor):
@@ -210,6 +216,27 @@ while True:
                 paints.append(DrawCircle(customColor,paintSize))
             paintIndex += 1
     
+    if(paints[paintIndex].getTool() != currentTool):
+        if len(paints[paintIndex].getPoints()) == 0:
+            if currentTool == 0:
+                paints[paintIndex] = DrawBrush(customColor,paintSize)
+            elif currentTool == 1:
+                paints[paintIndex] = DrawLine(customColor,paintSize)
+            elif currentTool == 2:
+                paints[paintIndex] = DrawRectangle(customColor,paintSize)
+            elif currentTool == 3:
+                paints[paintIndex] = DrawCircle(customColor,paintSize)
+        else:
+            if currentTool == 0:
+                paints.append(DrawBrush(customColor,paintSize))
+            elif currentTool == 1:
+                paints.append(DrawLine(customColor,paintSize))
+            elif currentTool == 2:
+                paints.append(DrawRectangle(customColor,paintSize))
+            elif currentTool == 3:
+                paints.append(DrawCircle(customColor,paintSize))
+            paintIndex += 1
+    
     #Key presses for clearing canvas and switching tools
     if keyboard.is_pressed("c"):
         if currentTool == 0:
@@ -221,38 +248,38 @@ while True:
         elif currentTool == 3:
             paints = [DrawCircle(customColor,paintSize)]
         paintIndex = 0
-    elif keyboard.is_pressed("1"):
-        currentTool = 0
-        latestIndex = len(paints)-1
-        if len(paints[latestIndex].getPoints()) == 0:
-            paints[latestIndex] = DrawBrush(customColor,paintSize)
-        else:
-            paints.append(DrawBrush(customColor,paintSize))
-            paintIndex += 1
-    elif keyboard.is_pressed("2"):
-        currentTool = 1
-        latestIndex = len(paints)-1
-        if len(paints[latestIndex].getPoints()) == 0:
-            paints[latestIndex] = DrawLine(customColor,paintSize)
-        else:
-            paints.append(DrawLine(customColor,paintSize))
-            paintIndex += 1
-    elif keyboard.is_pressed("3"):
-        currentTool = 2
-        latestIndex = len(paints)-1
-        if len(paints[latestIndex].getPoints()) == 0:
-            paints[latestIndex] = DrawRectangle(customColor,paintSize)
-        else:
-            paints.append(DrawRectangle(customColor,paintSize))
-            paintIndex += 1
-    elif keyboard.is_pressed("4"):
-        currentTool = 3
-        latestIndex = len(paints)-1
-        if len(paints[latestIndex].getPoints()) == 0:
-            paints[latestIndex] = DrawCircle(customColor,paintSize)
-        else:
-            paints.append(DrawCircle(customColor,paintSize))
-            paintIndex += 1
+    #Undo
+    elif keyboard.is_pressed("z"):
+        if not undoDebounce:
+            undoDebounce = True
+            latestIndex = len(paints)-1
+            if len(paints[latestIndex].getPoints()) > 0:
+                if currentTool == 0:
+                    paints[latestIndex] = DrawBrush(customColor,paintSize)
+                elif currentTool == 1:
+                    paints[latestIndex] = DrawLine(customColor,paintSize)
+                elif currentTool == 2:
+                    paints[latestIndex] = DrawRectangle(customColor,paintSize)
+                elif currentTool == 3:
+                    paints[latestIndex] = DrawCircle(customColor,paintSize)
+            else:
+                if len(paints) > 1:
+                    paints.pop(len(paints)-2)
+                    paintIndex -=1
+                else:
+                    if currentTool == 0:
+                        paints = [DrawBrush(customColor,paintSize)]
+                    elif currentTool == 1:
+                        paints = [DrawLine(customColor,paintSize)]
+                    elif currentTool == 2:
+                        paints = [DrawRectangle(customColor,paintSize)]
+                    elif currentTool == 3:
+                        paints = [DrawCircle(customColor,paintSize)]
+                    paintIndex = 0
+    
+    if not keyboard.is_pressed("z"):
+        undoDebounce = False
+        
     
     # Read each frame from webcam
     success, cam = cap.read()
